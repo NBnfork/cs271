@@ -14,15 +14,19 @@ INCLUDE Irvine32.inc
 userIn1		WORD	?	; integer will be entered
 userIn2		WORD	?
 intro1		BYTE	"Welcome to Assembly Basics by Noah Buchen", 0
+EC1			BYTE	"EC1: Program will loop" , 0
+EC2			BYTE	"EC2: Validate Input" , 0
 prompt1		BYTE	"Please enter 2 integers to begin.", 0
 prompt2		BYTE	"First int:" , 0
 prompt3		BYTE	"Second int:" , 0
+greaterThan	BYTE	"The second integer is larger than the first." , 0
 divString	BYTE	" remainder " , 0
 sum			WORD	?
 difference	WORD	?
 product		DWORD	?
 quotient	WORD	?
 remainder	WORD	?
+repeatMess	BYTE	"Enter [0] to exit or [1] to repeat" , 0
 exitMess	BYTE	"That's all folks!", 0
 
 .code
@@ -34,6 +38,7 @@ main PROC
 	call	CrLf
 
 ; output user instructions
+L1:
 	mov		edx, OFFSET prompt1
 	call	WriteString
 	call	CrLf
@@ -48,9 +53,14 @@ main PROC
 	call	ReadDec 
 	mov		userIn2, ax
 	call	CrLf
+; validate input
+	mov bx, userIn1
+	cmp ax, bx		;int2 is already in ax
+	ja L2
 
 ; calculate and store sum
-	mov bx, userIn1
+	mov ax, userIn1
+	mov bx, userIn2
 	add ax, bx
 	mov sum, ax
 
@@ -130,7 +140,18 @@ main PROC
 	call	CrLf
 	call	CrLf
 
+	JMP		L3
+; bad input message;
+L2:
+	mov		edx, OFFSET greaterThan
+	call	WriteString
+	call	CrLf
+	call	CrLf
+; output exit menu
+	mov		edx, OFFSET repeatMess
+
 ; output terminating message
+L3:
 	mov		edx, OFFSET exitMess
 	call	WriteString
 	call	CrLf
