@@ -56,21 +56,21 @@ L1:
 	call	WriteString
 	call	ReadDec 
 	mov		userIn1, ax
-	mov edx, OFFSET prompt3
-	call WriteString
+	mov 	edx, OFFSET prompt3
+	call 	WriteString
 	call	ReadDec 
 	mov		userIn2, ax
 	call	CrLf
 ; validate input
-	mov bx, userIn1
-	cmp ax, bx		;int2 is already in ax
-	ja L2
+	mov 	bx, userIn1
+	cmp 	ax, bx		;int2 is already in ax
+	ja 		L2
 
 ; calculate and store sum
-	mov ax, userIn1
-	mov bx, userIn2
-	add ax, bx
-	mov sum, ax
+	mov 	ax, userIn1
+	mov 	bx, userIn2
+	add 	ax, bx
+	mov 	sum, ax
 
 ;ouput sum
 	mov		ax, userIn1
@@ -123,7 +123,7 @@ L1:
 	call	CrLf
 
 ;calculate quotient and remainder
-	mov		dx, 0 ; must be cleared since dividend will be stored in DX:AX for 16 bit
+	mov		dx, 0 
  	mov		ax, userIn1
 	mov		bx, userIn2
 	div		bx
@@ -148,6 +148,7 @@ L1:
 	call	CrLf
 	call	CrLf
 	JMP		L3
+
 ; bad input message;
 L2:
 	mov		edx, OFFSET greaterThan
@@ -164,8 +165,8 @@ L3:
 	call	CrLf
 	cmp		ax, 1
 	je		L1
-; output terminating message
 
+; output terminating message
 	mov		edx, OFFSET exitMess
 	call	WriteString
 	call	CrLf
