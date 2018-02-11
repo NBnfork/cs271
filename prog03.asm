@@ -13,12 +13,14 @@ LOWERLIMIT = -100 ;for validating
 .data
 
 mess1			BYTE    "Integer Accumulator by Noah Buchen", 13, 10, 0
+ecMess			BYTE	"EC:Line numbers added to user input.", 13, 10, 0
 prompt1			BYTE    "Please enter your name: ", 0
 userName		BYTE    100 DUP(0)
 mess2			BYTE    "Hello, " , 0
 mess3			BYTE    "Enter your numbers in the range from [-100, -1].", 13, 10, 0
 mess4			BYTE	"Enter a non-negative number when you are finished.", 13, 10, 0
-prompt2			BYTE	"Enter a number:" , 0
+lineCounter		DWORD	1
+prompt2			BYTE	" enter a number: " , 0
 errorMess1		BYTE    "Oops, that number is out of range. Enter [-100, -1]", 13, 10, 0
 termIn			SDWORD	?
 runningTotal	SDWORD	0
@@ -61,6 +63,12 @@ mov     edx, OFFSET mess4
 call    Writestring
 
 L1:
+;output line number and with period
+mov		eax, lineCounter 
+call	WriteDec
+mov     al, '.'
+call    WriteChar
+inc		lineCounter
 ;prompt user to enter number
 mov     edx, OFFSET prompt2
 call    Writestring
@@ -68,7 +76,7 @@ call    Writestring
 call	ReadInt
 mov		termIn, eax
 
-;check if number is negative, or jump to average:
+;check if number is negative, or jmp to average:
 cmp		eax, 0
 jge		CalcAverage
 
