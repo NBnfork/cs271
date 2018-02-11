@@ -20,7 +20,7 @@ mess2			BYTE    "Hello, " , 0
 mess3			BYTE    "Enter your numbers in the range from [-100, -1].", 13, 10, 0
 mess4			BYTE	"Enter a non-negative number when you are finished.", 13, 10, 0
 lineCounter		DWORD	1
-prompt2			BYTE	" enter a number: " , 0
+prompt2			BYTE	" Enter number: " , 0
 errorMess1		BYTE    "Oops, that number is out of range. Enter [-100, -1]", 13, 10, 0
 termIn			SDWORD	?
 runningTotal	SDWORD	0
@@ -28,7 +28,7 @@ rtMess			BYTE	"The sum of your valid inputs is: ", 0
 termsTotal		DWORD   0
 ttMess1			BYTE	"You input ", 0
 ttMess2			BYTE	" valid numbers.", 13, 10, 0
-zdMess			BYTE	"You don't want this program to divide by zero!", 13, 10, 0
+zdMess			BYTE	"You don't want this program to divide by zero, do you?!", 13, 10, 0
 average			SDWORD   ?
 averageMess		BYTE	"The rounded average of the numbers is: ", 0
 mess5			BYTE    ", this program is complete.", 13, 10, 0     
@@ -37,9 +37,11 @@ exitMess		BYTE    "Goodbye!", 13, 10, 0
 .code
 main PROC
 
-;Display title and user name
+;Display title, user name, and EC
 mov     edx, OFFSET mess1
 call    Writestring
+mov		edx, OFFSET	ecMess
+call	Writestring
 call    CrLf
 
 ;Get user's name
