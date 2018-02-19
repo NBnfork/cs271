@@ -7,21 +7,20 @@ TITLE Composite Numbers   (prog04.asm)
 
 INCLUDE Irvine32.inc
 
-UPPERLIMIT = -100 ;for validating
+UPPERLIMIT = 400 ;for validating
 
 .data
 
 mess1       BYTE    "Composite Numbers by Noah Buchen", 13, 10, 0
-prompt1     BYTE    "Please choose how many composite numbers you would like to see. [1, 400].", 13, 10, 0
-errorMess1  BYTE    "Oops, that number is out of range. Enter [-100, -1]", 13, 10, 0
+prompt1     BYTE    "Please choose how many composite numbers you would like to see. [1, 400] ", 0
+errorMess1  BYTE    "Oops, that number is out of range. Enter [1, 400]", 13, 10, 0
 termsTotal  DWORD   ?
 spaces3		BYTE    "   ", 0
 termColumn  DWORD   0
 prevTerm    DWORD   1
 newTerm     DWORD   1
-mess3       BYTE    "Just 1:( How about something a little more difficult next time!", 13, 10, 0
-mess4       BYTE    ", this program is complete.", 13, 10, 0     
-exitMess    BYTE    "Goodbye!", 13, 10, 0
+exitMess1   BYTE    "This program is complete.", 13, 10, 0     
+exitMess2   BYTE    "Goodbye!", 13, 10, 0
 
 .code
 main PROC
@@ -39,8 +38,6 @@ main PROC
 	exit	; exit to operating system
 main ENDP
 
-
-
 ;**introduction**
 ;this proc will output the title of this program
 introduction PROC
@@ -50,37 +47,53 @@ introduction PROC
 	ret
 introduction ENDP
 
-;**getUserData**
-;this proc will ask the user for input
-getUserData PROC
-	mov     edx, OFFSET prompt2
+getUserData	PROC
+	mov     edx, OFFSET prompt1
 	call    WriteString
 	call    ReadInt
 	mov     termsTotal, eax
 	call    CrLF
 	call	validate
 	ret
-getUserData END
+getUserData	ENDP
 
-;**validate**
-;this proc will validate the user input
 validate PROC
-;termsTotal is >= limit
-	mov     ebx, UPPERLIMIT
+;termsTotal is <= limit
+	pushad
 	mov		eax, termsTotal
+	mov     ebx, UPPERLIMIT
 	cmp     eax, ebx
 	jle     upperOK
 	jmp     badInput
 
 badInput:
-;output error message and call getUserData again
+	;output error message and call again
 	mov     edx, OFFSET errorMess1
 	call    WriteString
 	call	getUserData
 
 upperOK: 
-	
+	popad
 	ret
 validate ENDP
+
+showComposites PROC
+	
+	ret
+showComposites ENDP
+
+isComposite PROC
+
+	ret
+isComposite ENDP
+
+farewell	PROC
+mov     edx, OFFSET exitMess1
+call    WriteString
+mov     edx, OFFSET exitMess2
+call    WriteString
+call    CrLf
+	ret
+farewell	ENDP
 
 END main
