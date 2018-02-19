@@ -7,7 +7,7 @@ TITLE Composite Numbers   (prog04.asm)
 
 INCLUDE Irvine32.inc
 
-UPPERLIMIT = 400 ;for validating
+UPPERLIMIT = 400 
 
 .data
 
