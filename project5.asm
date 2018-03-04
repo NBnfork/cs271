@@ -23,10 +23,10 @@ mess2		BYTE	"This program generates random numbers in the ",
 					"calculates the ", 13, 10,
 					"median value, and displays the sorted list.", 13, 10, 0
 prompt1		BYTE	"How many numbers should be generated? [10-200]: ", 13, 10, 0
+errorMess   BYTE    "Oops, that number is out of range. Enter [10-200]: ", 13, 10, 0
 unsortMess	BYTE	"The unsorted random numbers:", 13, 10, 0
 sortMess	BYTE	"The sorted list:", 13, 10, 0
 medianMess	BYTE	"The median is "
-
 userInput	DWORD	? ;number of ints to display
 theArray	DWORD	UPPERLIMIT	DUP(?) ;array for random numbers 
 
@@ -86,7 +86,21 @@ intro	ENDP
 ;registers changed:
 
 getData	PROC
- 
+	pushad
+	mov		ebp, esp
+	;mov OFFSET of userInput to edi
+	mov		edi, [ebp + 8]
+	;output prompt
+	mov		edx, OFFSET Prompt1
+	call	WriteString
+	;get input, set value and validate
+	call	ReadDec
+	mov		[edi], eax
+	call	CrLf
+	;pass validate parameters
+	push	[edi]
+	call	validate ;recursive
+	popad
 	ret
 getData	ENDP
 
@@ -179,8 +193,7 @@ displayMedian	PROC
 	cmp		edx, 0
 	je		ifEven
 	;if odd: access and print value @theArray[quoient + 1]
-	mov		edx, 
-	mul		4
+	shl		eax, 2 ;a.k.a mul by 4
 	add		esi, eax
 	mov		eax, [esi]
 	call	WriteDec
@@ -192,11 +205,25 @@ ifEven:
 	;add value @theArray[i] and @theArray[i+1]
 	;save current index value
 	mov		ebx, eax
-
-	mov		eax, [esi + eax * 4]
-	add		eax, [esi + ebx * 4]
-	;div by 2
+	;access quoient + 1
+	shl		eax, 2 ;a.k.a mul by 4
+	add		esi, eax
+	mov		eax, [esi]
+	;save value in ebx
+	mov		ebx, eax
+	;sub 4 from esi to access Array[i]
+	sub		esi, 4
+	;access value @ theArray[i]
+	mov		eax, [esi]
+	add		eax, ebx
+	;find average by dividing by two
+	mov		edx, 0
+	mov		ebx, 2
+	div		ebx ; quoient in eax
 	;print result and linefeed
+	call	WriteDec
+	call	CrLf
+	call	CrLf
 
 cleanUp:
 	;clean up
@@ -241,4 +268,39 @@ lineFeed:
 	ret
 manageOutput ENDP
 
+;Recursive procedure to validate input range
+;receives: userInput 
+;returns: 
+;preconditions: userInput != ?
+;registers changed: 
+validate PROC
+;termsTotal is <= upperlimit
+	pushad
+	mov		ebp, esp
+	;move param value to eax
+	mov		eax, [ebp + 8]
+	mov     ebx, UPPERLIMIT
+	cmp     eax, ebx
+	jle     checkLower
+	jmp     badInput
+
+checkLower:
+;termsTotal is >= lowerlimit
+	mov		ebx, LOWERLIMIT
+	cmp		eax, ebx
+	jge		validated
+	jmp		badInput
+
+
+
+badInput:
+	;output error message and call again
+	mov     edx, OFFSET errorMess
+	call    WriteString
+	call	getData
+
+validated: 
+	popad
+	ret 4
+validate ENDP
 END main
