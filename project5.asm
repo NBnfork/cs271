@@ -19,9 +19,9 @@ HI = 999
 mess1       BYTE    "Random Integer Sort by Noah Buchen", 13, 10,0
 mess2		BYTE	"This program generates random numbers in the",
 					"range [100... 999],", 13, 10,
-					"displays the original list, sorts the list,",
-					"calculates the median", 13, 10,
-					"value, and displays the sorted list.", 13, 10, 0
+					"displays the original list, sorts the list, ",
+					"calculates the ", 13, 10,
+					"median value, and displays the sorted list.", 13, 10, 0
 prompt1		BYTE	"How many numbers should be generated? [10-200]: ", 13, 10, 0
 unsortMess	BYTE	"The unsorted random numbers:", 13, 10, 0
 medianMess	BYTE	"The median is ", 13, 10, 0
@@ -52,7 +52,9 @@ main ENDP
 intro PROC
 	mov     edx, OFFSET mess1
 	call    Writestring
-	call    CrLf
+	mov		edx, OFFSET mess2
+	call	Writestring
+	call	CrLF
 	ret
 intro	ENDP
 
