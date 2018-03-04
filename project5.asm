@@ -25,7 +25,7 @@ mess2		BYTE	"This program generates random numbers in the ",
 prompt1		BYTE	"How many numbers should be generated? [10-200]: ", 13, 10, 0
 unsortMess	BYTE	"The unsorted random numbers:", 13, 10, 0
 sortMess	BYTE	"The sorted list:", 13, 10, 0
-medianMess	BYTE	"The median is ", 13, 10, 0
+medianMess	BYTE	"The median is "
 
 userInput	DWORD	? ;number of ints to display
 theArray	DWORD	UPPERLIMIT	DUP(?) ;array for random numbers 
@@ -34,11 +34,31 @@ theArray	DWORD	UPPERLIMIT	DUP(?) ;array for random numbers
 main PROC
 	call	Randomize 
 	call	intro
+	;pass parameters for getData
+	push	OFFSET userInput
 	call	getData
+	;pass parameters for fillArray
+	push	OFFSET theArray
+	push	userInput
 	call	fillArray
+	;pass parameters for displayList, set Carryflag
+	push	OFFSET theArray
+	push	userInput
+	push	OFFSET unsortMess
 	call	displayList
+	;pass parameters for sortList
+	push	OFFSET theArray
+	push	userInput
 	call	sortList
+	;pass parameters for displayMedian
+	push	OFFSET theArray
+	push	userInput
+	push	OFFSET medianMess
 	call	displayMedian
+	;pass parameters for displayList
+	push	OFFSET theArray
+	push	userInput
+	push	OFFSET sortMess
 	call	displayList
 
 	exit	; exit to operating system
@@ -81,13 +101,36 @@ fillArray	PROC
 fillArray	ENDP
 
 ;Procedure to display each element of the array.
-;receives: OFFSET theArray, userInput, OFFSET unsortedMess, OFFSET sortedMess
+;receives: OFFSET theArray, userInput, OFFSET (message to print)
 ;returns: 
 ;preconditions: array size = userInput
 ;registers changed:
 displayList	PROC
+;set up stack frame
+	pushad
+	mov		ebp, esp
+	; mov theArray into esi
+	mov		esi, [ebp + 16]
+	; mov userInput (count) into ecx
+	mov		ecx, [ebp + 12]
+	;mov Mess into edx to print
+	mov		edx, [ebp + 8]
+	call	WriteString
+	call	CrLf
 
-	ret
+	mov		ebx, 1 ; to manage column formating
+PrintLoop:
+	;print value
+	mov		eax, [esi]
+	call	WriteDec
+	call	manageOutput ;uses ebx
+	;add 4 to esi to get to next value
+	add		esi, 4
+	loop	PrintLoop
+	call	CrLF
+	;clean up
+	popad	
+	ret 12
 displayList	ENDP
 
 ;Procedure to sort the list into decesending order
@@ -111,13 +154,91 @@ exchange	PROC
 exchange	ENDP
 
 ;Procedure calculate the  median value.
-;receives: userInput, OFFSET theArray 
-;returns: userInput
+;receives: OFFSET theArray, userInput, OFFSET medianMess 
+;returns: 
 ;preconditions: theArray is sorted
 ;registers changed:
 displayMedian	PROC
+;set up stack frame
+	pushad
+	mov		ebp, esp
+	; mov theArray into esi
+	mov		esi, [ebp + 16]
+	; mov userInput (count) into ebx
+	mov		eax, [ebp + 12]
+	;mov medianMess into edx and print
+	mov		edx, [ebp + 8]
+	call	WriteString
+	;calculate median
+	;check if odd or even elements
+	;div count by 2
+	mov		edx, 0
+	mov		ebx, 2
+	div		ebx
+	;check remainder
+	cmp		edx, 0
+	je		ifEven
+	;if odd: access and print value @theArray[quoient + 1]
+	mov		edx, 
+	mul		4
+	add		esi, eax
+	mov		eax, [esi]
+	call	WriteDec
+	call	CrLf
+	call	CrLf
+	jmp		cleanUp
+ifEven:
+	
+	;add value @theArray[i] and @theArray[i+1]
+	;save current index value
+	mov		ebx, eax
 
-	ret
+	mov		eax, [esi + eax * 4]
+	add		eax, [esi + ebx * 4]
+	;div by 2
+	;print result and linefeed
+
+cleanUp:
+	;clean up
+	popad
+	ret 12
 displayMedian	ENDP
+
+;Procedure to print spaces and linefeeds
+;receives: 
+;returns: 
+;preconditions: 
+;registers changed: ebx
+
+manageOutput	PROC
+	;save registers
+	push	ecx
+	push	eax
+
+	; loop to print spaces
+	mov		ecx, 4
+spaceLoop:
+	mov		eax, ' '
+	call	WriteChar
+	loop	spaceLoop
+
+	;check for linefeed
+	cmp     ebx, 10
+	je      lineFeed
+	inc		ebx
+	;restore registers
+	pop		ecx
+	pop		eax
+	ret
+
+lineFeed:
+	call	CrLF
+	;reset ebx (column counter)
+	mov     ebx, 1
+	;restore registers
+	pop		ecx
+	pop		eax
+	ret
+manageOutput ENDP
 
 END main
