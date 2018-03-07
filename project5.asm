@@ -17,6 +17,7 @@ HI = 999
 
 .data
 mess1       BYTE    "Random Integer Sort by Noah Buchen", 13, 10,0
+mess1a		BYTE	"EC: attempted recursive quicksort", 13, 10, 0
 mess2		BYTE	"This program generates random numbers in the ",
 					"range [100... 999],", 13, 10,
 					"displays the original list, sorts the list, ",
@@ -75,6 +76,9 @@ main ENDP
 intro PROC
 	mov     edx, OFFSET mess1
 	call    Writestring
+	mov		edx, OFFSET mess1a
+	call	WriteString
+	call	CrLf
 	mov		edx, OFFSET mess2
 	call	Writestring
 	call	CrLF
@@ -176,15 +180,15 @@ displayList	ENDP
 ;returns: when base case met
 ;preconditions: array size = userInput
 ;registers changed: eax, ebx, ecx, edx
-;source: provided excellent anology for QS http://me.dt.in.th/page/Quicksort/
-sortList	PROC
+;source: provided excellent analogy for QS http://me.dt.in.th/page/Quicksort/
+sortList	PROC 
 	push	ebp
 	mov		ebp, esp
 	;save Array index	
 	mov		esi, [ebp + 12] 
 	;save array size 
 	mov		ecx, [ebp + 8]
-	
+	pushad
 	;set number of comparisons to make
 	dec		ecx
 	;set GreatThanSize(eax) to zero
@@ -254,22 +258,24 @@ checkLess:
 
 baseCase:
 	;clean up
+	popad
 	pop		ebp
 	ret		8	
 sortList	ENDP
 
 ;Procedure to exchange array elements for selection sort.
-;receives: OFFSET theArray[i], OFFSET theArray[j] (i and j are elements to be exchanged)
+;receives: addresses of two elements to swap
 ;returns: 
-;preconditions: i and j must be > userInput - 1
+;preconditions: 
 ;registers changed: none		 
-exchange	PROC USES eax ebx edx esi edi
+exchange	PROC 
 	push	ebp
 	mov		ebp, esp
 	;save first pram
-	mov		esi, [ebp + 8]
+	mov		esi, [ebp + 12]
 	;save second pram
-	mov		edi, [ebp + 12]
+	mov		edi, [ebp + 8]
+	pushad
 	;sav first in temp
 	mov		eax, [esi]
 	;sav second in temp
@@ -278,6 +284,7 @@ exchange	PROC USES eax ebx edx esi edi
 	mov		[esi], ebx
 	mov		[edi], eax	
 	;clean up
+	popad
 	pop		ebp
 	ret		8
 exchange	ENDP
