@@ -22,13 +22,15 @@ mess2		BYTE	"This program generates random numbers in the ",
 					"displays the original list, sorts the list, ",
 					"calculates the ", 13, 10,
 					"median value, and displays the sorted list.", 13, 10, 0
-prompt1		BYTE	"How many numbers should be generated? [10-200]: ", 13, 10, 0
-errorMess   BYTE    "Oops, that number is out of range. Enter [10-200]: ", 13, 10, 0
+prompt1		BYTE	"How many numbers should be generated? [10-200]: ", 0
+errorMess   BYTE    "Oops, that number is out of range!", 13, 10, 0
 unsortMess	BYTE	"The unsorted random numbers:", 13, 10, 0
 sortMess	BYTE	"The sorted list:", 13, 10, 0
-medianMess	BYTE	"The median is "
+medianMess	BYTE	"The median is ", 0
 userInput	DWORD	? ;number of ints to display
-theArray	DWORD	UPPERLIMIT	DUP(?) ;array for random numbers 
+theArray	DWORD	UPPERLIMIT	DUP(?) ;array for random numbers
+
+
 
 .code
 main PROC
@@ -41,7 +43,7 @@ main PROC
 	push	OFFSET theArray
 	push	userInput
 	call	fillArray
-	;pass parameters for displayList, set Carryflag
+	;pass parameters for displayList
 	push	OFFSET theArray
 	push	userInput
 	push	OFFSET unsortMess
@@ -86,42 +88,64 @@ intro	ENDP
 ;registers changed:
 
 getData	PROC
-	pushad
+	push	ebp
 	mov		ebp, esp
-	;mov OFFSET of userInput to edi
-	mov		edi, [ebp + 8]
+	;mov OFFSET of userInput to ebx
+	mov		ebx, [ebp + 8]
 	;output prompt
 	mov		edx, OFFSET Prompt1
 	call	WriteString
 	;get input, set value and validate
-	call	ReadDec
-	mov		[edi], eax
-	call	CrLf
-	;pass validate parameters
-	push	[edi]
+	call	ReadInt
+	mov		[ebx], eax
 	call	validate ;recursive
-	popad
-	ret
+	call	CrLf
+	pop		ebp
+	ret		4
 getData	ENDP
 
 ;Procedure to fill array with random numbers
 ;receives: OFFSET theArray, userInput
 ;returns: 
 ;preconditions: userInput <= 10
-;registers changed:
+;registers changed: esi, ecx, eax
+;source: Lecture 20: Displaying Arrays and Using Random Numbers
 fillArray	PROC
+	push	ebp
+	mov		ebp, esp
+	; mov theArray into esi
+	mov		esi, [ebp + 12]
+	; mov userInput (count) into ecx
+	mov		ecx, [ebp + 8]
+	;assert ecx >= 10
+	cmp		ecx, 9
+	je		assertFailed
+fillLoop:
+	;generate random between lo and high
+	;range = 999 - 100 +1
+	mov		eax, 900
+	call	RandomRange
+	;add low to eax
+	add		eax, 100
+	;put it in array index [esi]
+	mov		[esi], eax
+	;inc esi
+	add		esi, 4
+	loop	fillLoop
 
-	ret
+assertFailed:
+	pop		ebp
+	ret		8
 fillArray	ENDP
 
 ;Procedure to display each element of the array.
 ;receives: OFFSET theArray, userInput, OFFSET (message to print)
 ;returns: 
 ;preconditions: array size = userInput
-;registers changed:
+;registers changed: eax, ebx, ecx
 displayList	PROC
 ;set up stack frame
-	pushad
+	push	ebp
 	mov		ebp, esp
 	; mov theArray into esi
 	mov		esi, [ebp + 16]
@@ -130,7 +154,6 @@ displayList	PROC
 	;mov Mess into edx to print
 	mov		edx, [ebp + 8]
 	call	WriteString
-	call	CrLf
 
 	mov		ebx, 1 ; to manage column formating
 PrintLoop:
@@ -142,29 +165,121 @@ PrintLoop:
 	add		esi, 4
 	loop	PrintLoop
 	call	CrLF
+	call	CrLF
 	;clean up
-	popad	
-	ret 12
+	pop		ebp
+	ret		12
 displayList	ENDP
 
-;Procedure to sort the list into decesending order
-;receives: OFFSET theArray, userInput
-;returns: 
+;Procedure to QuickSort the list into decesending order
+;receives: OFFSET theArray, userInput 
+;returns: when base case met
 ;preconditions: array size = userInput
-;registers changed:
+;registers changed: eax, ebx, ecx, edx
+;source: provided excellent anology for QS http://me.dt.in.th/page/Quicksort/
 sortList	PROC
+	push	ebp
+	mov		ebp, esp
+	;save Array index	
+	mov		esi, [ebp + 12] 
+	;save array size 
+	mov		ecx, [ebp + 8]
+	
+	;set number of comparisons to make
+	dec		ecx
+	;set GreatThanSize(eax) to zero
+	mov		eax, 0
+	;set lessThanSize(ebx) to zero
+	mov		ebx, 0
+	;save pivot value in edi
+	mov		edi, [esi]
+	;save swapaddress in edx
+	add		esi, 4
+	mov		edx, esi
+Compare:
+	
+	;compare pivot to next element
+	cmp		edi, [esi]
+	jg		lessThan ; to make the array of values that are less
+	;greater
+	;exchange, move swap address up, 
+	push	edx
+	push	esi
+	call	exchange
+	add		edx, 4
+	;inc size of GreaterThanArray(eax)
+	inc		eax
+	; then access next element
+	add		esi, 4
+	loop	Compare
+	jmp		Swap
+LessThan:	
+;	inc size of lessThanArry, then access next element
+	inc		ebx
+	add		esi, 4
+	
+	loop	Compare
+Swap:
+	;swap pivot with position right before swap
+	sub		edx, 4
+	push	edx ;final @pivot point position
+	;get piviot to push
+	mov		ecx, userInput
+	shl		ecx, 2
+	sub		esi, ecx
+	push	esi ;@pivot 
+	call	exchange
 
-	ret
+
+	;check base case for greaterThanArray
+	cmp		eax, 2
+	jl		checkLess
+
+	;recursivily sort greaterThanArray, push starting address
+	push	esi
+	push	eax; greatThanArray size
+	call	sortList
+
+	;check base case for lessThanArray
+
+checkLess:
+	cmp		ebx, 2
+	jl		baseCase
+
+	;sort lessThanArray
+	add		edx, 4 ;move to [pivot +1]
+	push	edx
+	push	ebx ; lessThanArray size
+	call	sortList
+
+baseCase:
+	;clean up
+	pop		ebp
+	ret		8	
 sortList	ENDP
 
 ;Procedure to exchange array elements for selection sort.
-;receives: OFFSET theArray[i], OFFSET theArray[j] (i and j are elements to be compared)
+;receives: OFFSET theArray[i], OFFSET theArray[j] (i and j are elements to be exchanged)
 ;returns: 
 ;preconditions: i and j must be > userInput - 1
-;registers changed:
-exchange	PROC
-
-	ret
+;registers changed: none		 
+exchange	PROC USES eax ebx edx esi edi
+	push	ebp
+	mov		ebp, esp
+	;save first pram
+	mov		esi, [ebp + 8]
+	;save second pram
+	mov		edi, [ebp + 12]
+	;sav first in temp
+	mov		eax, [esi]
+	;sav second in temp
+	mov		ebx, [edi]
+	;swap
+	mov		[esi], ebx
+	mov		[edi], eax	
+	;clean up
+	pop		ebp
+	ret		8
 exchange	ENDP
 
 ;Procedure calculate the  median value.
@@ -174,11 +289,11 @@ exchange	ENDP
 ;registers changed:
 displayMedian	PROC
 ;set up stack frame
-	pushad
+	push	ebp
 	mov		ebp, esp
 	; mov theArray into esi
 	mov		esi, [ebp + 16]
-	; mov userInput (count) into ebx
+	; mov userInput (count) into eax
 	mov		eax, [ebp + 12]
 	;mov medianMess into edx and print
 	mov		edx, [ebp + 8]
@@ -227,8 +342,8 @@ ifEven:
 
 cleanUp:
 	;clean up
-	popad
-	ret 12
+	pop		ebp
+	ret		12
 displayMedian	ENDP
 
 ;Procedure to print spaces and linefeeds
@@ -238,10 +353,8 @@ displayMedian	ENDP
 ;registers changed: ebx
 
 manageOutput	PROC
-	;save registers
 	push	ecx
 	push	eax
-
 	; loop to print spaces
 	mov		ecx, 4
 spaceLoop:
@@ -253,32 +366,27 @@ spaceLoop:
 	cmp     ebx, 10
 	je      lineFeed
 	inc		ebx
-	;restore registers
-	pop		ecx
 	pop		eax
+	pop		ecx
 	ret
 
 lineFeed:
 	call	CrLF
 	;reset ebx (column counter)
 	mov     ebx, 1
-	;restore registers
-	pop		ecx
 	pop		eax
+	pop		ecx
 	ret
 manageOutput ENDP
 
 ;Recursive procedure to validate input range
-;receives: userInput 
+;receives: 
 ;returns: 
 ;preconditions: userInput != ?
-;registers changed: 
+;registers changed: ebx
 validate PROC
 ;termsTotal is <= upperlimit
 	pushad
-	mov		ebp, esp
-	;move param value to eax
-	mov		eax, [ebp + 8]
 	mov     ebx, UPPERLIMIT
 	cmp     eax, ebx
 	jle     checkLower
@@ -297,10 +405,12 @@ badInput:
 	;output error message and call again
 	mov     edx, OFFSET errorMess
 	call    WriteString
+	push	OFFSET	userInput
 	call	getData
 
 validated: 
 	popad
-	ret 4
+	ret 
 validate ENDP
+
 END main
