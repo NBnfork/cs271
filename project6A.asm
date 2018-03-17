@@ -9,25 +9,7 @@ TITLE Project6A     (project6A.asm)
 INCLUDE Irvine32.inc
 
 LOWERLIMIT = 0 ;of user input
-
-;macro will display a prompt and store a string in a variable
-;parameters: prompt, name of variable to save string in
-mGetString MACRO prompt, varName
-	push	eax
-	push	ecx
-	push	edx		
-	mov		edx, OFFSET prompt
-	call	WriteString
-	;get input and save in varName, 
-	mov		edx, OFFSET	varName
-	mov		ecx, (SIZEOF varName)-1
-	call	ReadString
-	mov		varName, eax
-	call	CrLf
-	pop		edx
-	pop		ecx
-	pop		eax
-ENDM
+UPPERLIMIT = 4,294,967,295 
 
 ;marco will display a string 
 ;parameters: name of the string
@@ -38,75 +20,103 @@ mDisplayString MACRO stringName
 	pop		edx
 ENDM
 
+;macro will display a prompt and store a string in a variable
+;parameters: prompt, name of variable to 
+mGetString MACRO prompt, varName
+	push	eax
+	push	ecx
+	;display prompt
+	mDisplayString prompt
+	;get string and  save in varName, 
+	mov		edx, OFFSET	varName
+	mov		ecx, (SIZEOF varName) - 1
+	call	ReadString
+	call	CrLf
+	pop		edx
+	pop		ecx
+	pop		eax
+ENDM
+
 .data
-mess1       BYTE    by Noah Buchen", 13, 10,0
-mess1a		BYTE	"EC: attempted recursive quicksort", 13, 10, 0
-mess2		BYTE	"This program generates random numbers in the ",
-					"range [100... 999],", 13, 10,
-					"displays the original list, sorts the list, ",
-					"calculates the ", 13, 10,
-					"median value, and displays the sorted list.", 13, 10, 0
-prompt1		BYTE	"How many numbers should be generated? [10-200]: ", 0
-errorMess   BYTE    "Oops, that number is out of range!", 13, 10, 0
-unsortMess	BYTE	"The unsorted random numbers:", 13, 10, 0
-sortMess	BYTE	"The sorted list:", 13, 10, 0
-medianMess	BYTE	"The median is ", 0
-userInput	DWORD	? ;number of ints to display
-theArray	DWORD	UPPERLIMIT	DUP(?) ;array for random numbers
+mess1       BYTE    "Low Level I/O Fun by Noah Buchen", 13, 10,0
+mess2		BYTE	"Please provide 10 unsigned decimal integers.", 13, 10
+					"The integers must fit in a 32 bit register. ", 13, 10
+					"This program will then display the integers,",
+					" their sum, and their average.", 13, 10, 0
+prompt1		BYTE	"Enter an unsigned integer: ", 0
+errorMess   BYTE    "ERROR: bad input!", 13, 10,
+					"Try again:" , 0
+results1	BYTE	"You enter the following numbers: ", 13, 10, 0
+results2	BYTE	"Their sum: ", 13, 10, 0
+results3	BYTE	"Their average: ", 0
+userInput	BYTE	10	DUP(0) ;user inputed string
+goodInt		DWORD	?
+theArray	DWORD	10	DUP(?) ;array for integers
+sum			DWORD	?
+average		DWORD	?
 
 
 
 .code
 main PROC
-	call	intro
+	;display intoduction
+	mDisplayString mess1
+	mDisplayString mess2
+	call	CrLF
+	;buildArray by using ReadVal PROC
+	push	OFFSET theArray
+	push	goodInt
 	call	buildArray
+	;pass params
+	push	sum
 	call	sumArray
+	;pass params
+	push	average
 	call	averageArray
+	;pass params
+	push	OFFSET theArray
+	push	sum
+	push	average
 	call	displayResults
-	call	
 	exit	; exit to operating system
 main ENDP
 
-;Procedure to print intro of program.
-;receives: 
-;returns: 
-;preconditions:
-;registers changed: edx
 
-intro PROC
-	mov     edx, OFFSET mess1
-	call    Writestring
-	mov		edx, OFFSET mess1a
-	call	WriteString
-	call	CrLf
-	mov		edx, OFFSET mess2
-	call	Writestring
-	call	CrLF
-	ret
-intro	ENDP
 
-;Procedure to gather data from user.
-;receives: OFFSET userInput
-;returns: userInput
+;Procedure to gather data from user and put it into an array
+;receives: OFFSET theArray
+;returns: theArray
 ;preconditions:
 ;registers changed:
 
-getData	PROC
+buildArray	PROC
 	push	ebp
 	mov		ebp, esp
-	;mov OFFSET of userInput to ebx
-	mov		ebx, [ebp + 8]
-	;output prompt
-	mov		edx, OFFSET Prompt1
-	call	WriteString
-	;get input, set value and validate
-	call	ReadInt
-	mov		[ebx], eax
-	call	validate ;recursive
-	call	CrLf
+	push	esi
+	push	ebx
+	push	eax
+	;mov OFFSET of theArray to ebx
+	mov		esi, [ebp + 12]
+	;mov goodInt
+	mov		ebx, [ebp +8]
+	;set counter
+	mov		ecx, 10
+fillwith10:
+	;push params
+	push	ebx 
+	call	ReadVal
+	;mov goodInt and place in array position
+	mov		eax, ebx
+	mov		[esi], eax
+	add		esi, 4
+	loop	fillwith10
+	;clean up
+	pop		eax
+	pop		ebx
+	pop		esi
 	pop		ebp
 	ret		4
-getData	ENDP
+buildArray	ENDP
 
 ;Procedure to fill array with random numbers
 ;receives: OFFSET theArray, userInput
