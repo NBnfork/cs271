@@ -165,6 +165,7 @@ GetString:
 
 	;call macro which returns string in local variable
 	mGetString edx, userInput 
+	
 	;eax has size of string move it into loop
 	mov		ecx, eax
 	;convert and validate
@@ -173,6 +174,7 @@ GetString:
 	mov		[edi], ebx
 	;prepare for using lodsb
 	lea		esi, userInput
+	cld
 Converting:
 	lodsb ; next byte is now in eax
 	;make sure the ASCII is a digit
@@ -234,7 +236,23 @@ sumArray ENDP
 averageArray PROC
 	ret
 averageArray ENDP
-writeVal PROc
+
+writeVal PROC
+	push	ebp
+	mov		ebp, esp
+	push	eax
+	push	ebx
+	push	ecx
+	push	edx
+	;move param
+	mov		eax, [ebp + 8]
+	;prepare for using lodsb
+	call	WriteInt
+	pop	edx
+	pop	ecx
+	pop	ebx
+	pop	eax
+	pop ebp
 	ret
 writeVal ENDP
 ;Procedure to display array, sum, and average
@@ -258,7 +276,7 @@ displayResults PROC
 	mDisplayString edx
 	;set counter
 	mov		ecx, 10
-
+	cld 
 PrintArray:
 	;load next value
 	lodsd
@@ -268,7 +286,7 @@ PrintArray:
 	;check if final value to print else print comma
 	cmp		ecx, 1
 	je		LastVal
-	;mPrintComma
+	mPrintComma
 	loop PrintArray
 LastVal:
 	call	CrLf
