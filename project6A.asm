@@ -149,7 +149,7 @@ buildArray	ENDP
 
 ReadVal PROC
 	;declare local array to hold userInput
-	LOCAL userInput[10]: BYTE
+	LOCAL userInput[32]: BYTE
 	;sav registers
 	push	eax
 	push	ebx
