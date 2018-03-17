@@ -9,13 +9,13 @@ TITLE Project6A     (project6A.asm)
 INCLUDE Irvine32.inc
 
 LOWERLIMIT = 0 ;of user input
-UPPERLIMIT = 4,294,967,295 
+UPPERLIMIT = 4294967295 
 
 ;marco will display a string 
-;parameters: name of the string
+;parameters: &name of string
 mDisplayString MACRO stringName
 	push	edx
-	mov		edx, OFFSET stringName
+	mov		edx, stringName
 	call	WriteString
 	pop		edx
 ENDM
@@ -23,33 +23,40 @@ ENDM
 ;macro will display a prompt and store a string in a variable
 ;parameters: prompt, name of variable to 
 mGetString MACRO prompt, varName
-	push	eax
 	push	ecx
+	push	edx
 	;display prompt
 	mDisplayString prompt
 	;get string and  save in varName, 
-	mov		edx, OFFSET	varName
+	lea		edx, varName
 	mov		ecx, (SIZEOF varName) - 1
 	call	ReadString
 	call	CrLf
 	pop		edx
 	pop		ecx
+ENDM
+
+;macro will display a comma and a space
+mPrintComma MACRO
+	push	eax
+	mov		al, ","
+	call	WriteString
+	mov		al, " "
+	call	WriteString
 	pop		eax
 ENDM
 
 .data
 mess1       BYTE    "Low Level I/O Fun by Noah Buchen", 13, 10,0
-mess2		BYTE	"Please provide 10 unsigned decimal integers.", 13, 10
-					"The integers must fit in a 32 bit register. ", 13, 10
+mess2		BYTE	"Please provide 10 unsigned decimal integers.", 13, 10,
+					"The integers must fit in a 32 bit register. ", 13, 10,
 					"This program will then display the integers,",
 					" their sum, and their average.", 13, 10, 0
 prompt1		BYTE	"Enter an unsigned integer: ", 0
-errorMess   BYTE    "ERROR: bad input!", 13, 10,
-					"Try again:" , 0
+errorMess   BYTE    "ERROR: bad input. Try again.", 13, 10, 0
 results1	BYTE	"You enter the following numbers: ", 13, 10, 0
-results2	BYTE	"Their sum: ", 13, 10, 0
+results2	BYTE	"Their sum: ", 0
 results3	BYTE	"Their average: ", 0
-userInput	BYTE	10	DUP(0) ;user inputed string
 goodInt		DWORD	?
 theArray	DWORD	10	DUP(?) ;array for integers
 sum			DWORD	?
@@ -60,31 +67,38 @@ average		DWORD	?
 .code
 main PROC
 	;display intoduction
-	mDisplayString mess1
-	mDisplayString mess2
+	mDisplayString OFFSET mess1
+	mDisplayString OFFSET mess2
 	call	CrLF
 	;buildArray by using ReadVal PROC
 	push	OFFSET theArray
-	push	goodInt
+	push	OFFSET goodInt
+	push	OFFSET prompt1
+	push	OFFSET errorMess
 	call	buildArray
 	;pass params
-	push	sum
+	push	OFFSET sum
 	call	sumArray
 	;pass params
-	push	average
+	push	OFFSET average
 	call	averageArray
 	;pass params
 	push	OFFSET theArray
-	push	sum
-	push	average
+	push	OFFSET results1
 	call	displayResults
+	;pas params
+	push	OFFSET sum
+	push	OFFSET results2
+	push	OFFSET	average
+	push	OFFSET	results3
+	call	displayResults2
 	exit	; exit to operating system
 main ENDP
 
 
 
 ;Procedure to gather data from user and put it into an array
-;receives: OFFSET theArray
+;receives: OFFSET theArray, OFFSET of goodInt, OFFSET prompt1
 ;returns: theArray
 ;preconditions:
 ;registers changed:
@@ -95,339 +109,219 @@ buildArray	PROC
 	push	esi
 	push	ebx
 	push	eax
-	;mov OFFSET of theArray to ebx
-	mov		esi, [ebp + 12]
-	;mov goodInt
-	mov		ebx, [ebp +8]
+	push	edx
+	;mov OFFSET of theArray to esi
+	mov		esi, [ebp + 20]
+	;mov OFFSET goodInt to ebx
+	mov		ebx, [ebp +16]
+	;mov prompt1
+	mov		edx, [ebp + 12]
 	;set counter
 	mov		ecx, 10
 fillwith10:
 	;push params
-	push	ebx 
+	;mov errorMess
+	mov		eax, [ebp + 8]
+	push	ebx
+	push	edx
+	push	eax
 	call	ReadVal
 	;mov goodInt and place in array position
-	mov		eax, ebx
+	mov		eax, [ebx] 
 	mov		[esi], eax
 	add		esi, 4
 	loop	fillwith10
 	;clean up
+	pop		edx
 	pop		eax
 	pop		ebx
 	pop		esi
 	pop		ebp
-	ret		4
+	ret		16
 buildArray	ENDP
 
-;Procedure to fill array with random numbers
-;receives: OFFSET theArray, userInput
-;returns: 
-;preconditions: userInput <= 10
-;registers changed: esi, ecx, eax
-;source: Lecture 20: Displaying Arrays and Using Random Numbers
-fillArray	PROC
-	push	ebp
-	mov		ebp, esp
-	; mov theArray into esi
-	mov		esi, [ebp + 12]
-	; mov userInput (count) into ecx
-	mov		ecx, [ebp + 8]
-	;assert ecx >= 10
-	cmp		ecx, 9
-	je		assertFailed
-fillLoop:
-	;generate random between lo and high
-	;range = 999 - 100 +1
-	mov		eax, 900
-	call	RandomRange
-	;add low to eax
-	add		eax, 100
-	;put it in array index [esi]
-	mov		[esi], eax
-	;inc esi
-	add		esi, 4
-	loop	fillLoop
-
-assertFailed:
-	pop		ebp
-	ret		8
-fillArray	ENDP
-
-;Procedure to display each element of the array.
-;receives: OFFSET theArray, userInput, OFFSET (message to print)
-;returns: 
-;preconditions: array size = userInput
-;registers changed: eax, ebx, ecx
-displayList	PROC
-;set up stack frame
-	push	ebp
-	mov		ebp, esp
-	; mov theArray into esi
-	mov		esi, [ebp + 16]
-	; mov userInput (count) into ecx
-	mov		ecx, [ebp + 12]
-	;mov Mess into edx to print
-	mov		edx, [ebp + 8]
-	call	WriteString
-
-	mov		ebx, 1 ; to manage column formating
-PrintLoop:
-	;print value
-	mov		eax, [esi]
-	call	WriteDec
-	call	manageOutput ;uses ebx
-	;add 4 to esi to get to next value
-	add		esi, 4
-	loop	PrintLoop
-	call	CrLF
-	call	CrLF
-	;clean up
-	pop		ebp
-	ret		12
-displayList	ENDP
-
-;Procedure to QuickSort the list into decesending order
-;receives: OFFSET theArray, userInput 
-;returns: when base case met
-;preconditions: array size = userInput
-;registers changed: eax, ebx, ecx, edx
-;source: provided excellent analogy for QS http://me.dt.in.th/page/Quicksort/
-sortList	PROC 
-	push	ebp
-	mov		ebp, esp
-	;save Array index	
-	mov		esi, [ebp + 12] 
-	;save array size 
-	mov		ecx, [ebp + 8]
-	pushad
-	;set number of comparisons to make
-	dec		ecx
-	;set GreatThanSize(eax) to zero
-	mov		eax, 0
-	;set lessThanSize(ebx) to zero
-	mov		ebx, 0
-	;save pivot value in edi
-	mov		edi, [esi]
-	;save swapaddress in edx
-	add		esi, 4
-	mov		edx, esi
-Compare:
-	
-	;compare pivot to next element
-	cmp		edi, [esi]
-	jg		lessThan ; to make the array of values that are less
-	;greater
-	;exchange, move swap address up, 
-	push	edx
-	push	esi
-	call	exchange
-	add		edx, 4
-	;inc size of GreaterThanArray(eax)
-	inc		eax
-	; then access next element
-	add		esi, 4
-	loop	Compare
-	jmp		Swap
-LessThan:	
-;	inc size of lessThanArry, then access next element
-	inc		ebx
-	add		esi, 4
-	
-	loop	Compare
-Swap:
-	;swap pivot with position right before swap
-	sub		edx, 4
-	push	edx ;final @pivot point position
-	;get piviot to push
-	mov		ecx, userInput
-	shl		ecx, 2
-	sub		esi, ecx
-	push	esi ;@pivot 
-	call	exchange
-
-
-	;check base case for greaterThanArray
-	cmp		eax, 2
-	jl		checkLess
-
-	;recursivily sort greaterThanArray, push starting address
-	push	esi
-	push	eax; greatThanArray size
-	call	sortList
-
-	;check base case for lessThanArray
-
-checkLess:
-	cmp		ebx, 2
-	jl		baseCase
-
-	;sort lessThanArray
-	add		edx, 4 ;move to [pivot +1]
-	push	edx
-	push	ebx ; lessThanArray size
-	call	sortList
-
-baseCase:
-	;clean up
-	popad
-	pop		ebp
-	ret		8	
-sortList	ENDP
-
-;Procedure to exchange array elements for selection sort.
-;receives: addresses of two elements to swap
-;returns: 
+;Procedure to read userString, validate and convert to integer
+;receives: &goodInt (where integer will be stored), 
+;		   &prompt1, &errorMess
+;returns: goodInt
 ;preconditions: 
-;registers changed: none		 
-exchange	PROC 
-	push	ebp
-	mov		ebp, esp
-	;save first pram
-	mov		esi, [ebp + 12]
-	;save second pram
-	mov		edi, [ebp + 8]
-	pushad
-	;sav first in temp
-	mov		eax, [esi]
-	;sav second in temp
-	mov		ebx, [edi]
-	;swap
-	mov		[esi], ebx
-	mov		[edi], eax	
-	;clean up
-	popad
-	pop		ebp
-	ret		8
-exchange	ENDP
-
-;Procedure calculate the  median value.
-;receives: OFFSET theArray, userInput, OFFSET medianMess 
-;returns: 
-;preconditions: theArray is sorted
 ;registers changed:
-displayMedian	PROC
-;set up stack frame
+
+ReadVal PROC
+	;declare local array to hold userInput
+	LOCAL userInput[10]: BYTE
+	;sav registers
+	push	eax
+	push	ebx
+	push	ecx
+	push	edx
+	push	edi
+	push	esi
+GetString:
+	;assign parameters
+	mov		edi, [ebp + 16]; goodInt
+	mov		edx, [ebp + 12]; prompt1
+	
+
+	;call macro which returns string in local variable
+	mGetString edx, userInput 
+	;eax has size of string move it into loop
+	mov		ecx, eax
+	;convert and validate
+	;set goodInt to zero
+	mov		ebx, 0
+	mov		[edi], ebx
+	;prepare for using lodsb
+	lea		esi, userInput
+Converting:
+	lodsb ; next byte is now in eax
+	;make sure the ASCII is a digit
+	cmp		eax, 48
+	jb		error
+	cmp		eax, 57
+	ja		error
+	;conversion algo: x = 10 * x + (str[i] - 48)
+	;subtract (str[i] is in eax)
+	sub		eax, 48
+	;sav results
+	mov		ebx, eax
+	;prep mul goodInt into eax, multiplier into edx
+	mov		eax, [edi]; goodInt
+	mov		edx, 10
+	; mul x
+	mul		edx
+	;add results
+	add		eax, ebx
+	;sav results in goodInt
+	mov		[edi], eax
+	loop	Converting
+	;validate size of integer
+	jc		error
+	jmp		ConversionComplete
+	 
+Error:
+	;load errorMess into reg
+	mov		ebx, [ebp +8]
+	mDisplayString ebx; errorMess
+	call	CrLf
+	jmp		GetString
+ConversionComplete:
+
+	;clean up
+	pop		esi
+	pop		edi
+	pop		edx
+	pop		ecx
+	pop		ebx
+	pop		eax
+	ret		12
+ReadVal ENDP
+
+;Procedure to sum values of an array 
+;receives: &theArray, &sum
+;returns: 
+;preconditions: array size > 0
+;registers changed: 
+sumArray PROC
+	ret
+sumArray ENDP
+
+;Procedure to take average of value of an array.
+;receives: &theArray, &sum, &average
+;returns: 
+;preconditions: theArray > 0
+;registers changed: 
+averageArray PROC
+	ret
+averageArray ENDP
+writeVal PROc
+	ret
+writeVal ENDP
+;Procedure to display array, sum, and average
+;receives: &theArray, &result1
+;returns: 
+;preconditions: theArray size > 0
+;registers changed: 
+displayResults PROC
+	;make stack frame
 	push	ebp
 	mov		ebp, esp
-	; mov theArray into esi
-	mov		esi, [ebp + 16]
-	; mov userInput (count) into eax
-	mov		eax, [ebp + 12]
-	;mov medianMess into edx and print
+	push	eax
+	push	ebx
+	push	ecx
+	push	edx
+	push	esi
+	;assign parameters for array and result1
+	mov		esi, [ebp + 12]
 	mov		edx, [ebp + 8]
-	call	WriteString
-	;calculate median
-	;check if odd or even elements
-	;div count by 2
-	mov		edx, 0
-	mov		ebx, 2
-	div		ebx
-	;check remainder
-	cmp		edx, 0
-	je		ifEven
-	;if odd: access and print value @theArray[quoient + 1]
-	shl		eax, 2 ;a.k.a mul by 4
-	add		esi, eax
-	mov		eax, [esi]
-	call	WriteDec
-	call	CrLf
-	call	CrLf
-	jmp		cleanUp
-ifEven:
-	
-	;add value @theArray[i] and @theArray[i+1]
-	;save current index value
-	mov		ebx, eax
-	;access quoient + 1
-	shl		eax, 2 ;a.k.a mul by 4
-	add		esi, eax
-	mov		eax, [esi]
-	;save value in ebx
-	mov		ebx, eax
-	;sub 4 from esi to access Array[i]
-	sub		esi, 4
-	;access value @ theArray[i]
-	mov		eax, [esi]
-	add		eax, ebx
-	;find average by dividing by two
-	mov		edx, 0
-	mov		ebx, 2
-	div		ebx ; quoient in eax
-	;print result and linefeed
-	call	WriteDec
-	call	CrLf
-	call	CrLf
+	;print string result1
+	mDisplayString edx
+	;set counter
+	mov		ecx, 10
 
-cleanUp:
+PrintArray:
+	;load next value
+	lodsd
+	;convert to string and print with writeVal
+	push	eax
+	call	writeVal
+	;check if final value to print else print comma
+	cmp		ecx, 1
+	je		LastVal
+	;mPrintComma
+	loop PrintArray
+LastVal:
+	call	CrLf
+	call	CrLF
 	;clean up
-	pop		ebp
-	ret		12
-displayMedian	ENDP
+	pop		esi
+	pop		edx
+	pop		ecx
+	pop		ebx
+	pop		eax
+	ret		8
+displayResults ENDP
 
-;Procedure to print spaces and linefeeds
-;receives: 
+
+;Procedure to displaysum, and average
+;receives:  &sum, &result2, &average, &results3, 
 ;returns: 
 ;preconditions: 
-;registers changed: ebx
+;registers changed: 
 
-manageOutput	PROC
-	push	ecx
+displayResults2 PROC
+	push	ebp
+	mov		ebp, esp
 	push	eax
-	; loop to print spaces
-	mov		ecx, 4
-spaceLoop:
-	mov		eax, ' '
-	call	WriteChar
-	loop	spaceLoop
-
-	;check for linefeed
-	cmp     ebx, 10
-	je      lineFeed
-	inc		ebx
-	pop		eax
+	push	ebx
+	push	ecx
+	push	edx
+	;load params
+	mov		eax, [ebp + 20];sum
+	mov		ebx, [ebp + 16];results2
+	mov		ecx, [ebp + 12];average
+	mov		edx, [ebp + 8];results3
+	;print result2
+	;wDisplayString ebx
+	mov		edx, ebx
+	call	WriteString
+	;pass &sum writeVal
+	push	eax
+	call	writeVal
+	call	CrLf
+	;print result3
+	call	WriteString
+	;wDisplayString edx
+	;pass  &average writeVal
+	push	ecx
+	call	writeVal
+	call	CrLf
+	pop		edx
 	pop		ecx
-	ret
-
-lineFeed:
-	call	CrLF
-	;reset ebx (column counter)
-	mov     ebx, 1
+	pop		ebx
 	pop		eax
-	pop		ecx
-	ret
-manageOutput ENDP
-
-;Recursive procedure to validate input range
-;receives: 
-;returns: 
-;preconditions: userInput != ?
-;registers changed: ebx
-validate PROC
-;termsTotal is <= upperlimit
-	pushad
-	mov     ebx, UPPERLIMIT
-	cmp     eax, ebx
-	jle     checkLower
-	jmp     badInput
-
-checkLower:
-;termsTotal is >= lowerlimit
-	mov		ebx, LOWERLIMIT
-	cmp		eax, ebx
-	jge		validated
-	jmp		badInput
-
-
-
-badInput:
-	;output error message and call again
-	mov     edx, OFFSET errorMess
-	call    WriteString
-	push	OFFSET	userInput
-	call	getData
-
-validated: 
-	popad
-	ret 
-validate ENDP
+	pop		ebp
+	ret		16
+displayResults2 ENDP
 
 END main
