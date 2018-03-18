@@ -36,18 +36,6 @@ mGetString MACRO prompt, varName
 	pop		ecx
 ENDM
 
-;macro will display a comma and a space
-mPrintComma MACRO
-	push	eax
-	;clear eax
-	mov		eax, 0
-	mov		al, ","
-	call	WriteString
-	mov		al, " "
-	call	WriteString
-	pop		eax
-ENDM
-
 .data
 mess1       BYTE    "Low Level I/O Fun by Noah Buchen", 13, 10,0
 mess2		BYTE	"Please provide 10 unsigned decimal integers.", 13, 10,
@@ -79,9 +67,11 @@ main PROC
 	push	OFFSET errorMess
 	call	buildArray
 	;pass params
+	push	OFFSET theArray
 	push	OFFSET sum
 	call	sumArray
 	;pass params
+	push	OFFSET sum
 	push	OFFSET average
 	call	averageArray
 	;pass params
@@ -230,20 +220,77 @@ ReadVal ENDP
 ;preconditions: array size > 0
 ;registers changed: 
 sumArray PROC
+	push	ebp
+	mov		ebp, esp
+	push	eax
+	push	ebx
+	push	ecx
+	push	edx
+	push	esi
+	;move parameters
+	mov		esi, [ebp +12] ;&thearray
+	mov		ebx, [ebp + 8] ;&sum
+	;set counter
+	mov		ecx, 10
+	;clear eax
+	mov		eax, 0
+	mov		edx, 0
+L1:
+	mov		edx, [ebx]
+	mov		eax, [esi]
+	add		edx, eax
+	mov		[ebx], edx
+	add		esi, 4
+	loop	L1
+
+	;clean up
+	pop		esi
+	pop		edx
+	pop		ecx
+	pop		ebx
+	pop		eax
+	pop		ebp
 	ret  8
 sumArray ENDP
 
 ;Procedure to take average of value of an array.
-;receives: &theArray, &sum, &average
+;receives: &sum, &average
 ;returns: 
 ;preconditions: theArray > 0
 ;registers changed: 
 averageArray PROC
-	ret	12
+	push	ebp
+	mov		ebp, esp
+	push	eax
+	push	ebx
+	push	ecx
+	push	edx
+	;mov params
+	mov		ecx, [ebp + 12]; &sum
+	mov		ebx, [ebp + 8]; &average
+	;div sum by 10
+	mov		eax, [ecx]
+	mov		edx, 0
+	mov		ecx, 10
+	div		ecx
+	;save results
+	mov		[ebx], eax
+	;clean up
+	pop		edx
+	pop		ecx
+	pop		ebx
+	pop		eax
+	pop		ebp
+	ret	8
 averageArray ENDP
 
+;Procedure to take an integer convert it to a string and then print it
+;receives: integer
+;returns: 
+;preconditions: theArray > 0
+;registers changed: 
 writeVal PROC
-LOCAL	saveMe[10]: DWORD, toConvert: DWORD, printMe[10]: BYTE 
+LOCAL	saveMe[10]: BYTE, toConvert: DWORD, printMe[10]: BYTE 
 	push	eax
 	push	ebx
 	push	ecx
@@ -261,7 +308,7 @@ LOCAL	saveMe[10]: DWORD, toConvert: DWORD, printMe[10]: BYTE
 NextDigit:
 	cmp		toConvert, 10
 	jl		lastSave
-	;divide in by 10
+	;divide int by 10
 	mov		edx, 0
 	mov		ebx, 10
 	mov		eax, toConvert
@@ -292,11 +339,10 @@ ElementCount:
 	inc		ecx
 	jmp		ElementCount
 LastElement:
-;point esi to "start" of string (4* ecx-1) of array
+;point esi to "start" of string (ecx-1) of array
 	lea		esi, saveMe
 	mov		ebx, ecx
 	dec		ebx ;-1
-	shl		ebx, 2 ;*4
 	add		esi, ebx
 	;set direction flag
 	std
@@ -306,11 +352,12 @@ reverse:
 	;load byte
 	lodsb
 	;put in PrintMe array
-	stosb
+	mov		[edi], eax
+	inc		edi
 	loop	reverse
 	;add zero byte
 	mov		eax, 0
-	stosb
+	mov		[edi], eax
 	lea		ebx, printME
 	mdisplayString ebx
 
@@ -328,7 +375,8 @@ writeVal ENDP
 ;preconditions: theArray size > 0
 ;registers changed: 
 displayResults PROC
-	LOCAL	intToPrint:DWORD
+	push	ebp
+	mov		ebp, esp
 	push	eax
 	push	ebx
 	push	ecx
@@ -342,7 +390,7 @@ displayResults PROC
 	;set counter
 	mov		ecx, 10
 	cld 
-	;clear eax so lodsd work
+	;clear eax so lodsd1 work
 	mov		eax, 0
 PrintArray:
 	;load next value
@@ -359,8 +407,8 @@ PrintArray:
 	;print space
 	mov		al, ' '
 	call	WriteChar
-	loop PrintArray
 LastVal:
+	loop PrintArray
 	call	CrLf
 	call	CrLF
 	;clean up
@@ -369,7 +417,7 @@ LastVal:
 	pop		ecx
 	pop		ebx
 	pop		eax
-	
+	pop		ebp
 	ret		8
 displayResults ENDP
 
@@ -391,22 +439,25 @@ displayResults2 PROC
 	mov		eax, [ebp + 20];sum
 	mov		ebx, [ebp + 16];results2
 	mov		ecx, [ebp + 12];average
-	mov		edx, [ebp + 8];results3
+	
 	;print result2
 	;wDisplayString ebx
 	mov		edx, ebx
 	call	WriteString
-	;pass &sum writeVal
-	push	eax
+	;pass sum writeVal
+	push	[eax]
 	call	writeVal
+	call	CrLf
 	call	CrLf
 	;print result3
+	mov		edx, [ebp + 8];results3
 	call	WriteString
 	;wDisplayString edx
-	;pass  &average writeVal
-	push	ecx
+	;pass  average writeVal
+	push	[ecx]
 	call	writeVal
 	call	CrLf
+	call	CrLF
 	pop		edx
 	pop		ecx
 	pop		ebx
