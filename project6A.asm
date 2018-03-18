@@ -39,6 +39,8 @@ ENDM
 ;macro will display a comma and a space
 mPrintComma MACRO
 	push	eax
+	;clear eax
+	mov		eax, 0
 	mov		al, ","
 	call	WriteString
 	mov		al, " "
@@ -54,7 +56,7 @@ mess2		BYTE	"Please provide 10 unsigned decimal integers.", 13, 10,
 					" their sum, and their average.", 13, 10, 0
 prompt1		BYTE	"Enter an unsigned integer: ", 0
 errorMess   BYTE    "ERROR: bad input. Try again.", 13, 10, 0
-results1	BYTE	"You enter the following numbers: ", 13, 10, 0
+results1	BYTE	"You entered the following numbers: ", 13, 10, 0
 results2	BYTE	"Their sum: ", 0
 results3	BYTE	"Their average: ", 0
 goodInt		DWORD	?
@@ -86,7 +88,7 @@ main PROC
 	push	OFFSET theArray
 	push	OFFSET results1
 	call	displayResults
-	;pas params
+	;pass params
 	push	OFFSET sum
 	push	OFFSET results2
 	push	OFFSET	average
@@ -176,7 +178,9 @@ GetString:
 	lea		esi, userInput
 	cld
 Converting:
-	lodsb ; next byte is now in eax
+	;clear eax so no extra data is held over when using lodsb
+	mov		eax, 0
+	lodsb ; next byte is now in al
 	;make sure the ASCII is a digit
 	cmp		eax, 48
 	jb		error
@@ -192,13 +196,13 @@ Converting:
 	mov		edx, 10
 	; mul x
 	mul		edx
+	;validate size of integer
+	jo		error
 	;add results
 	add		eax, ebx
 	;sav results in goodInt
 	mov		[edi], eax
 	loop	Converting
-	;validate size of integer
-	jc		error
 	jmp		ConversionComplete
 	 
 Error:
@@ -216,6 +220,7 @@ ConversionComplete:
 	pop		ecx
 	pop		ebx
 	pop		eax
+	
 	ret		12
 ReadVal ENDP
 
@@ -225,7 +230,7 @@ ReadVal ENDP
 ;preconditions: array size > 0
 ;registers changed: 
 sumArray PROC
-	ret
+	ret  8
 sumArray ENDP
 
 ;Procedure to take average of value of an array.
@@ -234,26 +239,88 @@ sumArray ENDP
 ;preconditions: theArray > 0
 ;registers changed: 
 averageArray PROC
-	ret
+	ret	12
 averageArray ENDP
 
 writeVal PROC
-	push	ebp
-	mov		ebp, esp
+LOCAL	saveMe[10]: DWORD, toConvert: DWORD, printMe[10]: BYTE 
 	push	eax
 	push	ebx
 	push	ecx
 	push	edx
+	push	esi
+	push	edi
+	;clear registers
+	mov		eax, 0
+	mov		edx, 0
 	;move param
 	mov		eax, [ebp + 8]
-	;prepare for using lodsb
-	call	WriteInt
-	pop	edx
-	pop	ecx
-	pop	ebx
-	pop	eax
-	pop ebp
-	ret
+	mov		toConvert, eax
+	lea		edi, saveMe
+	;check if int is less then ten
+NextDigit:
+	cmp		toConvert, 10
+	jl		lastSave
+	;divide in by 10
+	mov		edx, 0
+	mov		ebx, 10
+	mov		eax, toConvert
+	div		ebx
+	;save results in toConvert
+	mov		toConvert, eax
+	;add 48 to remainder
+	add		edx, 48
+	;add result to front of array
+	mov		eax, edx
+	stosb
+	jmp		NextDigit
+
+LastSave:
+	mov		eax, toConvert
+	add		eax, 48
+	stosb
+	;save 0 byte at end of string
+	mov		eax, 0
+	stosb
+	;check number of elements in array and set counter
+	mov		ecx, 0
+	lea		esi, saveMe
+ElementCount:
+	lodsb
+	cmp		eax, 0
+	je		lastElement
+	inc		ecx
+	jmp		ElementCount
+LastElement:
+;point esi to "start" of string (4* ecx-1) of array
+	lea		esi, saveMe
+	mov		ebx, ecx
+	dec		ebx ;-1
+	shl		ebx, 2 ;*4
+	add		esi, ebx
+	;set direction flag
+	std
+	;get ready to stosb
+	lea		edi, printME
+reverse:
+	;load byte
+	lodsb
+	;put in PrintMe array
+	stosb
+	loop	reverse
+	;add zero byte
+	mov		eax, 0
+	stosb
+	lea		ebx, printME
+	mdisplayString ebx
+
+	pop		edi
+	pop		esi
+	pop		edx
+	pop		ecx
+	pop		ebx
+	pop		eax
+	ret	 4
 writeVal ENDP
 ;Procedure to display array, sum, and average
 ;receives: &theArray, &result1
@@ -261,9 +328,7 @@ writeVal ENDP
 ;preconditions: theArray size > 0
 ;registers changed: 
 displayResults PROC
-	;make stack frame
-	push	ebp
-	mov		ebp, esp
+	LOCAL	intToPrint:DWORD
 	push	eax
 	push	ebx
 	push	ecx
@@ -277,6 +342,8 @@ displayResults PROC
 	;set counter
 	mov		ecx, 10
 	cld 
+	;clear eax so lodsd work
+	mov		eax, 0
 PrintArray:
 	;load next value
 	lodsd
@@ -286,7 +353,12 @@ PrintArray:
 	;check if final value to print else print comma
 	cmp		ecx, 1
 	je		LastVal
-	mPrintComma
+	;print comma
+	mov		al, ','
+	call	WriteChar
+	;print space
+	mov		al, ' '
+	call	WriteChar
 	loop PrintArray
 LastVal:
 	call	CrLf
@@ -297,6 +369,7 @@ LastVal:
 	pop		ecx
 	pop		ebx
 	pop		eax
+	
 	ret		8
 displayResults ENDP
 
